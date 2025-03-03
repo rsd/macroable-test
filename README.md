@@ -1,6 +1,6 @@
 # Laravel Macroable-Eloquent Conflict Demo
 
-This project demonstrates a bug that occurs when using Laravel's `Macroable` trait with Eloquent models, specifically when implementing relationship methods as macros.
+This project demonstrates a bug that occurs when using Laravel's `Macroable` trait with `Eloquent` models, specifically when implementing relationship methods as macros.
 
 ## Bug Description
 
@@ -29,7 +29,7 @@ This repository has three branches demonstrating different stages:
 
 2. **`macroable-bug`**: Shows the bug when using Macroable to define `projectsByStatus()` as a macro.
 
-3. **`macroable-inline-fix`**: Demonstrates a workaround in the Model class to make it work.
+3. **`macroable-inline-fix`**: Demonstrates a workaround in the Model class to make it work (also `main` branch).
 
 Note: A proper fix should be implemented in the Macroable trait itself, not in individual models.
 
@@ -62,6 +62,54 @@ After converting to a macro by:
 ```bash
 php artisan tinker --execute="echo App\Models\Company::query()->first()->projectsByStatus('active')->count();"
 # Output: BadMethodCallException  Method App\Models\Company::hydrate does not exist.
+```
+
+## Inline Solution (Model-Level Fix)
+
+The `macroable-inline-fix` branch demonstrates a workaround that preserves both Macroable functionality and Eloquent's magic method handling:
+
+```php
+class Company extends Model
+{
+    use HasFactory;
+    use Macroable {
+        // Alias Macroable's magic methods to new names
+        Macroable::__call as macroCall;
+        Macroable::__callStatic as macroCallStatic;
+    }
+
+    public function __call($method, $parameters)
+    {
+        // If a macro is defined for this method, call it
+        if (static::hasMacro($method)) {
+            return $this->macroCall($method, $parameters);
+        }
+        // Otherwise, defer to Eloquent's normal behavior
+        return parent::__call($method, $parameters);
+    }
+
+    public static function __callStatic($method, $parameters)
+    {
+        if (static::hasMacro($method)) {
+            return static::macroCallStatic($method, $parameters);
+        }
+        return parent::__callStatic($method, $parameters);
+    }
+}
+```
+
+This solution:
+1. Aliases Macroable's magic methods to new names
+2. Provides custom implementations of `__call` and `__callStatic` that:
+   - First check if a macro exists for the method
+   - If so, call the macro using the aliased method
+   - If not, defer to Eloquent's implementation
+
+With this fix, both macro methods and Eloquent's dynamic methods work correctly:
+
+```bash
+php artisan tinker --execute="echo App\Models\Company::query()->first()->projectsByStatus('active')->count();"
+# Output: 3
 ```
 
 ## Technical Explanation
