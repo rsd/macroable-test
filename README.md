@@ -46,6 +46,12 @@ The bug appears when:
 
 ### Working Example (Direct Method)
 
+Swith to `origin/before-macroable` branch to test:
+
+```bash
+git checkout origin/before-macroable
+```
+
 When `projectsByStatus` is implemented directly on the `Company` model:
 
 ```bash
@@ -58,6 +64,12 @@ php artisan tinker --execute="echo App\Models\Company::query()->first()->project
 After converting to a macro by:
 1. Adding `use Macroable;` to the `Company` model
 2. Moving the method to a service provider as a macro
+
+Swith to `origin/macroable-bug` branch to test:
+
+```bash
+git checkout origin/macroable-bug
+```
 
 ```bash
 php artisan tinker --execute="echo App\Models\Company::query()->first()->projectsByStatus('active')->count();"
